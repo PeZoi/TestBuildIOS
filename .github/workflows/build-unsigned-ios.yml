@@ -26,27 +26,14 @@ jobs:
       - name: Prebuild Expo to Native iOS project
         run: npx expo prebuild --platform ios --no-install
 
-      - name: Set Node binary path for Xcode
-        run: |
-          echo "export NODE_BINARY=$(which node)" > ios/.xcode.env
-          cat ios/.xcode.env
-
       - name: Install CocoaPods dependencies
         run: |
           cd ios
           pod install
 
-      - name: Generate JavaScript bundle manually
+      - name: Debug - List generated iOS files
         run: |
-          # Chủ động tự tạo file bundle JS từ index.ts (TypeScript)
-          # Nhờ package.json đã cài sẵn @react-native-community/cli và @react-native/metro-config,
-          # lệnh này sẽ chạy thành công 100%.
-          npx react-native bundle \
-            --entry-file index.ts \
-            --platform ios \
-            --dev false \
-            --bundle-output ios/main.jsbundle \
-            --assets-dest ios/bundle-assets
+          ls -R ios/
 
       - name: Build and Archive iOS Project (Unsigned)
         run: |
@@ -71,24 +58,7 @@ jobs:
       - name: Package Unsigned App into IPA
         run: |
           mkdir -p Payload
-          APP_PATH=$(find build/ios.xcarchive/Products/Applications -name "*.app" | head -n 1)
-          
-          echo "Found app path: $APP_PATH"
-          
-          # KIỂM TRA VÀ COPY CƯỠNG BỨC BUNDLE JS NẾU XCODE BỎ QUA
-          if [ ! -f "$APP_PATH/main.jsbundle" ]; then
-            echo "Warning: main.jsbundle NOT found in Xcode archive. Injecting bundle manually..."
-            cp ios/main.jsbundle "$APP_PATH/"
-            
-            # Copy assets kèm theo nếu có
-            if [ -d "ios/bundle-assets" ]; then
-              cp -r ios/bundle-assets/* "$APP_PATH/" || true
-            fi
-          else
-            echo "Success: main.jsbundle already exists in Xcode archive."
-          fi
-          
-          cp -r "$APP_PATH" Payload/
+          cp -r build/ios.xcarchive/Products/Applications/*.app Payload/
           zip -r TaskFlow_unsigned.ipa Payload
 
       - name: Upload IPA Artifact
