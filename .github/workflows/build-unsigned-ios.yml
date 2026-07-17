@@ -38,10 +38,8 @@ jobs:
 
       - name: Generate JavaScript bundle manually
         run: |
-          # Cài đặt CLI cần thiết cho react-native bundle
-          npm install -D @react-native-community/cli
-          # Tự tạo file bundle JS thủ công trước để đảm bảo có mã nguồn JS nhúng vào app
-          npx react-native bundle \
+          # Sử dụng công cụ Expo CLI tích hợp sẵn để tạo JS bundle nhằm tránh lỗi thiếu dependencies
+          npx expo export:embed \
             --entry-file index.js \
             --platform ios \
             --dev false \
