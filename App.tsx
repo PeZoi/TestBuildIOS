@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 
 // Import expo-live-activity một cách an toàn để tránh crash trên Expo Go
-let LiveActivity = null;
+let LiveActivity: any = null;
 try {
   LiveActivity = require('expo-live-activity');
 } catch (e) {
@@ -23,6 +23,7 @@ try {
 // Cấu hình hiển thị thông báo khi ứng dụng đang mở ở foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -30,19 +31,21 @@ Notifications.setNotificationHandler({
   }),
 });
 
+type ActiveTabType = 'counter' | 'timer';
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('counter'); // 'counter' | 'timer'
-  const [isLiveActivitySupported, setIsLiveActivitySupported] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTabType>('counter');
+  const [isLiveActivitySupported, setIsLiveActivitySupported] = useState<boolean>(false);
 
   // --- STATE BỘ ĐẾM ---
-  const [count, setCount] = useState(0);
-  const [counterActivityId, setCounterActivityId] = useState(null);
+  const [count, setCount] = useState<number>(0);
+  const [counterActivityId, setCounterActivityId] = useState<string | null>(null);
 
   // --- STATE HẸN GIỜ ---
-  const [timerDuration, setTimerDuration] = useState(60); // Tổng thời gian hẹn giờ (giây)
-  const [timeLeft, setTimeLeft] = useState(60); // Thời gian còn lại (giây)
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerActivityId, setTimerActivityId] = useState(null);
+  const [timerDuration, setTimerDuration] = useState<number>(60); // Tổng thời gian hẹn giờ (giây)
+  const [timeLeft, setTimeLeft] = useState<number>(60); // Thời gian còn lại (giây)
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [timerActivityId, setTimerActivityId] = useState<string | null>(null);
 
   // Kiểm tra khả năng hỗ trợ Live Activities (Dynamic Island)
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function App() {
 
     try {
       const subscription = LiveActivity.addActivityUpdatesListener(
-        ({ activityID, activityState }) => {
+        ({ activityID, activityState }: { activityID: string; activityState: string }) => {
           console.log(`Live Activity ${activityID} chuyển trạng thái sang: ${activityState}`);
           if (activityState === 'ended' || activityState === 'dismissed') {
             if (activityID === counterActivityId) {
@@ -98,7 +101,7 @@ export default function App() {
   }, [isLiveActivitySupported, counterActivityId, timerActivityId]);
 
   // --- LOGIC BỘ ĐẾM ---
-  const updateCount = async (newCount) => {
+  const updateCount = async (newCount: number) => {
     setCount(newCount);
 
     if (counterActivityId && isLiveActivitySupported && LiveActivity) {
@@ -152,7 +155,7 @@ export default function App() {
         setCounterActivityId(id);
         Alert.alert('Dynamic Island', 'Đã kích hoạt Dynamic Island cho Bộ đếm! Hãy thoát ra màn hình chính để xem.');
       }
-    } catch (e) {
+    } catch (e: any) {
       Alert.alert('Lỗi khởi chạy', `Không thể khởi chạy Live Activity: ${e.message}`);
     }
   };
@@ -171,7 +174,7 @@ export default function App() {
       await LiveActivity.stopActivity(counterActivityId, finalState);
       setCounterActivityId(null);
       Alert.alert('Dynamic Island', 'Đã tắt Dynamic Island Bộ đếm.');
-    } catch (e) {
+    } catch (e: any) {
       Alert.alert('Lỗi dừng', `Không thể dừng Live Activity: ${e.message}`);
     }
   };
@@ -187,7 +190,7 @@ export default function App() {
         },
         trigger: null,
       });
-    } catch (e) {
+    } catch (e: any) {
       Alert.alert('Lỗi gửi thông báo', e.message);
     }
   };
@@ -195,12 +198,12 @@ export default function App() {
   // --- LOGIC HẸN GIỜ (TIMER) ---
   // Chạy đếm ngược thời gian thực trên UI
   useEffect(() => {
-    let interval = null;
+    let interval: NodeJS.Timeout | null = null;
     if (isTimerRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            clearInterval(interval);
+            if (interval) clearInterval(interval);
             setIsTimerRunning(false);
             handleTimerComplete();
             return 0;
@@ -209,9 +212,11 @@ export default function App() {
         });
       }, 1000);
     } else {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isTimerRunning, timeLeft]);
 
   // Khi hoàn thành thời gian hẹn giờ
@@ -307,20 +312,20 @@ export default function App() {
     }
   };
 
-  const changeTimerDuration = (amount) => {
+  const changeTimerDuration = (amount: number) => {
     if (isTimerRunning) return;
     const newDuration = Math.max(10, timerDuration + amount); // Tối thiểu 10 giây
     setTimerDuration(newDuration);
     setTimeLeft(newDuration);
   };
 
-  const selectQuickDuration = (seconds) => {
+  const selectQuickDuration = (seconds: number) => {
     if (isTimerRunning) return;
     setTimerDuration(seconds);
     setTimeLeft(seconds);
   };
 
-  const formatTime = (totalSeconds) => {
+  const formatTime = (totalSeconds: number): string => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
@@ -332,7 +337,7 @@ export default function App() {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>EXPO LIVE DEMO</Text>
+        <Text style={styles.headerTitle}>EXPO LIVE DEMO (TS)</Text>
         <Text style={styles.headerSubtitle}>Notifications & Dynamic Island</Text>
       </View>
 
