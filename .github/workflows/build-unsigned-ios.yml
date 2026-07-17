@@ -26,6 +26,11 @@ jobs:
       - name: Prebuild Expo to Native iOS project
         run: npx expo prebuild --platform ios --no-install
 
+      - name: Set Node binary path for Xcode
+        run: |
+          echo "export NODE_BINARY=$(which node)" > ios/.xcode.env
+          cat ios/.xcode.env
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
