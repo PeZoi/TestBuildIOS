@@ -11,7 +11,6 @@ import {
   Dimensions,
   Vibration,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
@@ -48,7 +47,7 @@ export default function App() {
 
   // --- NOTIFICATION ANIMATION ---
   const [notificationText, setNotificationText] = useState<string>('');
-  const notificationY = useRef(new Animated.Value(-120)).current; // Bắt đầu ở ngoài màn hình phía trên
+  const notificationY = useRef(new Animated.Value(-150)).current; // Bắt đầu ở ngoài màn hình phía trên
 
   // --- STOPWATCH LOGIC ---
   const startStopwatch = () => {
@@ -140,7 +139,6 @@ export default function App() {
 
   // --- ANIMATIONS IMPLEMENTATION ---
   const triggerIslandAnimation = (running: boolean) => {
-    // Nếu app đang chạy và đảo không mở rộng, hiển thị trạng thái thu nhỏ có số chạy
     const targetWidth = running ? 150 : 120;
     const targetHeight = 34;
     const targetRadius = 17;
@@ -170,7 +168,6 @@ export default function App() {
   };
 
   const toggleExpandIsland = () => {
-    // Không cho phép tương tác nếu cả hai bộ đếm đều dừng
     if (!swRunning && !timerRunning) return;
 
     const expand = !islandExpanded;
@@ -200,25 +197,29 @@ export default function App() {
 
   const triggerNotification = (text: string) => {
     setNotificationText(text);
-    // Trượt xuống
     Animated.spring(notificationY, {
-      toValue: 20, // Hiển thị phía dưới Dynamic Island
+      toValue: Platform.OS === 'ios' ? 54 : 36, // Đẩy xuống dưới Dynamic Island thực tế
       useNativeDriver: true,
       friction: 6,
       tension: 40,
     }).start();
 
-    // Tự động thu hồi sau 4 giây
     setTimeout(() => {
       Animated.timing(notificationY, {
-        toValue: -150,
+        toValue: -180,
         duration: 350,
         useNativeDriver: true,
       }).start();
     }, 4000);
   };
 
-  // --- HELPERS ---
+  useEffect(() => {
+    return () => {
+      if (swInterval.current) clearInterval(swInterval.current);
+      if (timerInterval.current) clearInterval(timerInterval.current);
+    };
+  }, []);
+
   const formatStopwatch = (time: number) => {
     const min = Math.floor(time / 60000);
     const sec = Math.floor((time % 60000) / 1000);
@@ -234,236 +235,224 @@ export default function App() {
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // Hủy các interval khi component unmount
-  useEffect(() => {
-    return () => {
-      if (swInterval.current) clearInterval(swInterval.current);
-      if (timerInterval.current) clearInterval(timerInterval.current);
-    };
-  }, []);
-
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+    <View style={styles.container}>
+      <StatusBar style="light" />
 
-        {/* --- DYNAMIC ISLAND GIẢ LẬP --- */}
-        <View style={styles.islandContainer}>
-          <TouchableOpacity activeOpacity={0.9} onPress={toggleExpandIsland}>
-            <Animated.View
-              style={[
-                styles.dynamicIsland,
-                {
-                  width: islandWidth,
-                  height: islandHeight,
-                  borderRadius: islandRadius,
-                },
-              ]}
-            >
-              {!islandExpanded ? (
-                // Trạng thái THU NHỎ
-                <View style={styles.islandCollapsedContent}>
-                  {swRunning && (
-                    <>
-                      <Ionicons name="stopwatch" size={14} color="#30D158" style={styles.islandIcon} />
-                      <Text style={styles.islandText}>{formatStopwatch(swTime).substring(0, 5)}</Text>
-                    </>
-                  )}
-                  {timerRunning && (
-                    <>
-                      <Ionicons name="timer" size={14} color="#FF9F0A" style={styles.islandIcon} />
-                      <Text style={styles.islandText}>{formatTimer(timerLeft)}</Text>
-                    </>
-                  )}
-                  {!swRunning && !timerRunning && (
-                    <View style={styles.islandCameraPlaceholder} />
-                  )}
-                </View>
-              ) : (
-                // Trạng thái PHÓNG TO (Expanded) khi chạm vào
-                <View style={styles.islandExpandedContent}>
-                  {swRunning && (
-                    <View style={styles.expandedRow}>
-                      <View style={styles.expandedTextGroup}>
-                        <Text style={styles.expandedTitle}>Bấm giờ đang chạy</Text>
-                        <Text style={styles.expandedTime}>{formatStopwatch(swTime)}</Text>
-                      </View>
-                      <View style={styles.expandedControls}>
-                        <TouchableOpacity style={[styles.islandBtn, styles.islandBtnPause]} onPress={startStopwatch}>
-                          <Ionicons name="pause" size={16} color="#FFF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.islandBtn, styles.islandBtnReset]} onPress={resetStopwatch}>
-                          <Ionicons name="square" size={14} color="#FFF" />
-                        </TouchableOpacity>
-                      </View>
+      {/* --- DYNAMIC ISLAND GIẢ LẬP --- */}
+      <View style={styles.islandContainer}>
+        <TouchableOpacity activeOpacity={0.9} onPress={toggleExpandIsland}>
+          <Animated.View
+            style={[
+              styles.dynamicIsland,
+              {
+                width: islandWidth,
+                height: islandHeight,
+                borderRadius: islandRadius,
+              },
+            ]}
+          >
+            {!islandExpanded ? (
+              <View style={styles.islandCollapsedContent}>
+                {swRunning && (
+                  <>
+                    <Ionicons name="stopwatch" size={14} color="#30D158" style={styles.islandIcon} />
+                    <Text style={styles.islandText}>{formatStopwatch(swTime).substring(0, 5)}</Text>
+                  </>
+                )}
+                {timerRunning && (
+                  <>
+                    <Ionicons name="timer" size={14} color="#FF9F0A" style={styles.islandIcon} />
+                    <Text style={styles.islandText}>{formatTimer(timerLeft)}</Text>
+                  </>
+                )}
+                {!swRunning && !timerRunning && (
+                  <View style={styles.islandCameraPlaceholder} />
+                )}
+              </View>
+            ) : (
+              <View style={styles.islandExpandedContent}>
+                {swRunning && (
+                  <View style={styles.expandedRow}>
+                    <View style={styles.expandedTextGroup}>
+                      <Text style={styles.expandedTitle}>Bấm giờ đang chạy</Text>
+                      <Text style={styles.expandedTime}>{formatStopwatch(swTime)}</Text>
                     </View>
-                  )}
-                  {timerRunning && (
-                    <View style={styles.expandedRow}>
-                      <View style={styles.expandedTextGroup}>
-                        <Text style={styles.expandedTitle}>Đang đếm ngược</Text>
-                        <Text style={[styles.expandedTime, { color: '#FF9F0A' }]}>{formatTimer(timerLeft)}</Text>
-                      </View>
-                      <View style={styles.expandedControls}>
-                        <TouchableOpacity style={[styles.islandBtn, styles.islandBtnPause, { backgroundColor: '#FF9F0A' }]} onPress={startTimer}>
-                          <Ionicons name="pause" size={16} color="#FFF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.islandBtn, styles.islandBtnReset]} onPress={resetTimer}>
-                          <Ionicons name="refresh" size={16} color="#FFF" />
-                        </TouchableOpacity>
-                      </View>
+                    <View style={styles.expandedControls}>
+                      <TouchableOpacity style={[styles.islandBtn, styles.islandBtnPause]} onPress={startStopwatch}>
+                        <Ionicons name="pause" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.islandBtn, styles.islandBtnReset]} onPress={resetStopwatch}>
+                        <Ionicons name="square" size={14} color="#FFF" />
+                      </TouchableOpacity>
                     </View>
-                  )}
-                </View>
-              )}
-            </Animated.View>
+                  </View>
+                )}
+                {timerRunning && (
+                  <View style={styles.expandedRow}>
+                    <View style={styles.expandedTextGroup}>
+                      <Text style={styles.expandedTitle}>Đang đếm ngược</Text>
+                      <Text style={[styles.expandedTime, { color: '#FF9F0A' }]}>{formatTimer(timerLeft)}</Text>
+                    </View>
+                    <View style={styles.expandedControls}>
+                      <TouchableOpacity style={[styles.islandBtn, styles.islandBtnPause, { backgroundColor: '#FF9F0A' }]} onPress={startTimer}>
+                        <Ionicons name="pause" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.islandBtn, styles.islandBtnReset]} onPress={resetTimer}>
+                        <Ionicons name="refresh" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
+
+      {/* --- THÔNG BÁO IOS GIẢ LẬP --- */}
+      <Animated.View
+        style={[
+          styles.notificationBanner,
+          {
+            transform: [{ translateY: notificationY }],
+          },
+        ]}
+      >
+        <View style={styles.notificationHeader}>
+          <View style={styles.notificationIconBg}>
+            <Ionicons name="alarm" size={16} color="#FFF" />
+          </View>
+          <Text style={styles.notificationAppName}>ĐỒNG HỒ</Text>
+          <Text style={styles.notificationTime}>bây giờ</Text>
+        </View>
+        <Text style={styles.notificationText}>{notificationText}</Text>
+      </Animated.View>
+
+      {/* --- MAIN DISPLAY --- */}
+      <View style={styles.mainContent}>
+        {/* Header Chuyển đổi Mode */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, mode === 'stopwatch' && styles.tabButtonActive]}
+            onPress={() => setMode('stopwatch')}
+          >
+            <Ionicons name="stopwatch-outline" size={18} color={mode === 'stopwatch' ? '#FFF' : '#8E8E93'} />
+            <Text style={[styles.tabText, mode === 'stopwatch' && styles.tabTextActive]}>Bấm giờ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, mode === 'timer' && styles.tabButtonActive]}
+            onPress={() => setMode('timer')}
+          >
+            <Ionicons name="timer-outline" size={18} color={mode === 'timer' ? '#FFF' : '#8E8E93'} />
+            <Text style={[styles.tabText, mode === 'timer' && styles.tabTextActive]}>Hẹn giờ</Text>
           </TouchableOpacity>
         </View>
 
-        {/* --- THÔNG BÁO IOS GIẢ LẬP --- */}
-        <Animated.View
-          style={[
-            styles.notificationBanner,
-            {
-              transform: [{ translateY: notificationY }],
-            },
-          ]}
-        >
-          <View style={styles.notificationHeader}>
-            <View style={styles.notificationIconBg}>
-              <Ionicons name="alarm" size={16} color="#FFF" />
+        {/* HIỂN THỊ CHẾ ĐỘ BẤM GIỜ (STOPWATCH) */}
+        {mode === 'stopwatch' && (
+          <View style={styles.modeWrapper}>
+            <View style={styles.timerDisplayContainer}>
+              <Text style={styles.timerDisplayText}>{formatStopwatch(swTime)}</Text>
             </View>
-            <Text style={styles.notificationAppName}>ĐỒNG HỒ</Text>
-            <Text style={styles.notificationTime}>bây giờ</Text>
-          </View>
-          <Text style={styles.notificationText}>{notificationText}</Text>
-        </Animated.View>
 
-        {/* --- MAIN DISPLAY --- */}
-        <View style={styles.mainContent}>
-          {/* Header Chuyển đổi Mode */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tabButton, mode === 'stopwatch' && styles.tabButtonActive]}
-              onPress={() => setMode('stopwatch')}
-            >
-              <Ionicons name="stopwatch-outline" size={18} color={mode === 'stopwatch' ? '#FFF' : '#8E8E93'} />
-              <Text style={[styles.tabText, mode === 'stopwatch' && styles.tabTextActive]}>Bấm giờ</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabButton, mode === 'timer' && styles.tabButtonActive]}
-              onPress={() => setMode('timer')}
-            >
-              <Ionicons name="timer-outline" size={18} color={mode === 'timer' ? '#FFF' : '#8E8E93'} />
-              <Text style={[styles.tabText, mode === 'timer' && styles.tabTextActive]}>Hẹn giờ</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* HIỂN THỊ CHẾ ĐỘ BẤM GIỜ (STOPWATCH) */}
-          {mode === 'stopwatch' && (
-            <View style={styles.modeWrapper}>
-              <View style={styles.timerDisplayContainer}>
-                <Text style={styles.timerDisplayText}>{formatStopwatch(swTime)}</Text>
-              </View>
-
-              {/* Các nút bấm điều khiển */}
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.roundButton, { backgroundColor: '#1C1C1E' }]}
-                  onPress={swRunning ? recordLap : resetStopwatch}
-                >
-                  <Text style={[styles.buttonText, { color: '#FFF' }]}>
-                    {swRunning ? 'Vòng' : 'Đặt lại'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.roundButton,
-                    { backgroundColor: swRunning ? '#2C0D0E' : '#0A2A12' },
-                  ]}
-                  onPress={startStopwatch}
-                >
-                  <Text style={[styles.buttonText, { color: swRunning ? '#FF453A' : '#30D158' }]}>
-                    {swRunning ? 'Dừng' : 'Bắt đầu'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Danh sách Laps */}
-              <FlatList<Lap>
-                data={laps}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.lapsList}
-                renderItem={({ item, index }) => (
-                  <View style={styles.lapRow}>
-                    <Text style={styles.lapLabel}>Vòng {laps.length - index}</Text>
-                    <Text style={styles.lapTimeValue}>{formatStopwatch(item.lapTime)}</Text>
-                  </View>
-                )}
-              />
-            </View>
-          )}
-
-          {/* HIỂN THỊ CHẾ ĐỘ HẸN GIỜ (TIMER) */}
-          {mode === 'timer' && (
-            <View style={styles.modeWrapper}>
-              <View style={styles.timerDisplayContainer}>
-                {timerRunning ? (
-                  <Text style={[styles.timerDisplayText, { color: '#FF9F0A' }]}>
-                    {formatTimer(timerLeft)}
-                  </Text>
-                ) : (
-                  <View style={styles.selectorWrapper}>
-                    <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustTimer(-10)}>
-                      <Ionicons name="remove-circle-outline" size={32} color="#FFF" />
-                    </TouchableOpacity>
-                    <View style={styles.selectorDisplay}>
-                      <Text style={styles.selectorTime}>{formatTimer(timerDuration)}</Text>
-                      <Text style={styles.selectorLabel}>Nhấp để chỉnh thời gian</Text>
-                    </View>
-                    <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustTimer(10)}>
-                      <Ionicons name="add-circle-outline" size={32} color="#FFF" />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              {/* Các nút bấm điều khiển */}
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.roundButton, { backgroundColor: '#1C1C1E' }]}
-                  onPress={resetTimer}
-                >
-                  <Text style={[styles.buttonText, { color: '#FFF' }]}>Hủy</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.roundButton,
-                    { backgroundColor: timerRunning ? '#2C1A0A' : '#0A2A12' },
-                  ]}
-                  onPress={startTimer}
-                >
-                  <Text style={[styles.buttonText, { color: timerRunning ? '#FF9F0A' : '#30D158' }]}>
-                    {timerRunning ? 'Tạm dừng' : 'Bắt đầu'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Nút Test giả lập thông báo trực tiếp */}
+            {/* Các nút bấm điều khiển */}
+            <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={styles.toastTestBtn}
-                onPress={() => triggerNotification('🔔 Demo: Cuộc gọi đến giả lập từ Apple Inc.')}
+                style={[styles.roundButton, { backgroundColor: '#1C1C1E' }]}
+                onPress={swRunning ? recordLap : resetStopwatch}
               >
-                <Ionicons name="notifications-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.toastTestText}>Test Thông Báo iOS</Text>
+                <Text style={[styles.buttonText, { color: '#FFF' }]}>
+                  {swRunning ? 'Vòng' : 'Đặt lại'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.roundButton,
+                  { backgroundColor: swRunning ? '#2C0D0E' : '#0A2A12' },
+                ]}
+                onPress={startStopwatch}
+              >
+                <Text style={[styles.buttonText, { color: swRunning ? '#FF453A' : '#30D158' }]}>
+                  {swRunning ? 'Dừng' : 'Bắt đầu'}
+                </Text>
               </TouchableOpacity>
             </View>
-          )}
-        </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+
+            {/* Danh sách Laps */}
+            <FlatList<Lap>
+              data={laps}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.lapsList}
+              renderItem={({ item, index }) => (
+                <View style={styles.lapRow}>
+                  <Text style={styles.lapLabel}>Vòng {laps.length - index}</Text>
+                  <Text style={styles.lapTimeValue}>{formatStopwatch(item.lapTime)}</Text>
+                </View>
+              )}
+            />
+          </View>
+        )}
+
+        {/* HIỂN THỊ CHẾ ĐỘ HẸN GIỜ (TIMER) */}
+        {mode === 'timer' && (
+          <View style={styles.modeWrapper}>
+            <View style={styles.timerDisplayContainer}>
+              {timerRunning ? (
+                <Text style={[styles.timerDisplayText, { color: '#FF9F0A' }]}>
+                  {formatTimer(timerLeft)}
+                </Text>
+              ) : (
+                <View style={styles.selectorWrapper}>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustTimer(-10)}>
+                    <Ionicons name="remove-circle-outline" size={32} color="#FFF" />
+                  </TouchableOpacity>
+                  <View style={styles.selectorDisplay}>
+                    <Text style={styles.selectorTime}>{formatTimer(timerDuration)}</Text>
+                    <Text style={styles.selectorLabel}>Nhấp để chỉnh thời gian</Text>
+                  </View>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => adjustTimer(10)}>
+                    <Ionicons name="add-circle-outline" size={32} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Các nút bấm điều khiển */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.roundButton, { backgroundColor: '#1C1C1E' }]}
+                onPress={resetTimer}
+              >
+                <Text style={[styles.buttonText, { color: '#FFF' }]}>Hủy</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.roundButton,
+                  { backgroundColor: timerRunning ? '#2C1A0A' : '#0A2A12' },
+                ]}
+                onPress={startTimer}
+              >
+                <Text style={[styles.buttonText, { color: timerRunning ? '#FF9F0A' : '#30D158' }]}>
+                  {timerRunning ? 'Tạm dừng' : 'Bắt đầu'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Nút Test giả lập thông báo trực tiếp */}
+            <TouchableOpacity
+              style={styles.toastTestBtn}
+              onPress={() => triggerNotification('🔔 Demo: Cuộc gọi đến giả lập từ Apple Inc.')}
+            >
+              <Ionicons name="notifications-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.toastTestText}>Test Thông Báo iOS</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -471,12 +460,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000', // Đen sẫm chuẩn iOS
+    paddingTop: Platform.OS === 'ios' ? 54 : 20, // Tự xử lý chiều cao tai thỏ
   },
   mainContent: {
     flex: 1,
     paddingHorizontal: 16,
   },
-  // --- TAB CHUYỂN ĐỔI CHẾ ĐỘ ---
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#1C1C1E',
@@ -508,7 +497,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  // --- MÀN HÌNH ĐỒNG HỒ ---
   timerDisplayContainer: {
     height: 200,
     justifyContent: 'center',
@@ -522,7 +510,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontVariant: ['tabular-nums'],
   },
-  // --- BỘ CHỈNH HẸN GIỜ ---
   selectorWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -545,7 +532,6 @@ const styles = StyleSheet.create({
   adjustBtn: {
     padding: 8,
   },
-  // --- NÚT ĐIỀU KHIỂN DẠNG TRÒN (IOS STYLE) ---
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -564,7 +550,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  // --- DANH SÁCH VÒNG CHẠY (LAPS) ---
   lapsList: {
     width: width - 32,
     paddingTop: 10,
@@ -586,7 +571,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontVariant: ['tabular-nums'],
   },
-  // --- DYNAMIC ISLAND GIẢ LẬP ---
   islandContainer: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 12 : 36,
@@ -677,10 +661,9 @@ const styles = StyleSheet.create({
   islandBtnReset: {
     backgroundColor: '#FF453A',
   },
-  // --- THÔNG BÁO IOS GIẢ LẬP ---
   notificationBanner: {
     position: 'absolute',
-    top: 50,
+    top: 0,
     left: 16,
     right: 16,
     backgroundColor: 'rgba(28, 28, 30, 0.9)',
@@ -726,7 +709,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 18,
   },
-  // --- KHÁC ---
   toastTestBtn: {
     flexDirection: 'row',
     alignItems: 'center',
