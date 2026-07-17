@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14 # Chạy trên máy ảo macOS mới nhất của GitHub
+    runs-on: macos-15 # Chạy trên máy ảo macOS 15 mới nhất của GitHub để có Xcode 16+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
