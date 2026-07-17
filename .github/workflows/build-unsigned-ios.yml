@@ -1,0 +1,53 @@
+name: Build Unsigned iOS IPA
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Cho phép bạn bấm nút build thủ công trên web GitHub
+
+jobs:
+  build:
+    runs-on: macos-14 # Chạy trên máy ảo macOS mới nhất của GitHub
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prebuild Expo to Native iOS project
+        run: npx expo prebuild --platform ios
+
+      - name: Build and Archive iOS Project (Unsigned)
+        run: |
+          xcodebuild -workspace ios/ios.xcworkspace \
+                     -scheme ios \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -archivePath build/ios.xcarchive \
+                     clean archive \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     PROVISIONING_PROFILE_SPECIFIER=""
+
+      - name: Package Unsigned App into IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/ios.xcarchive/Products/Applications/*.app Payload/
+          zip -r TaskFlow_unsigned.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TaskFlow-Unsigned-IPA
+          path: TaskFlow_unsigned.ipa
+          if-no-files-found: error
