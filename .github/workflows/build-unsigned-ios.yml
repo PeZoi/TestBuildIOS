@@ -24,12 +24,28 @@ jobs:
         run: npm install
 
       - name: Prebuild Expo to Native iOS project
-        run: npx expo prebuild --platform ios
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+
+      - name: Debug - List generated iOS files
+        run: |
+          ls -R ios/
 
       - name: Build and Archive iOS Project (Unsigned)
         run: |
-          xcodebuild -workspace ios/ios.xcworkspace \
-                     -scheme ios \
+          # Tìm file .xcworkspace trong thư mục ios
+          WORKSPACE_PATH=$(find ios -name "*.xcworkspace" | head -n 1)
+          SCHEME_NAME="ios"
+          
+          echo "Using workspace: $WORKSPACE_PATH"
+          echo "Using scheme: $SCHEME_NAME"
+          
+          xcodebuild -workspace "$WORKSPACE_PATH" \
+                     -scheme "$SCHEME_NAME" \
                      -configuration Release \
                      -sdk iphoneos \
                      -archivePath build/ios.xcarchive \
